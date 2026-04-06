@@ -1,17 +1,118 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, LoginUserDto } from './dto';
 
 @Injectable()
 export class AuthService {
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
+
   async register(createUserDto: CreateUserDto) {
-    // TODO: Implement user registration logic (e.g., save to DB, hash password)
-    await Promise.resolve();
-    return { message: 'User registered successfully', user: createUserDto };
+    const { name, email, password } = createUserDto;
+
+    // Verificar se o usuário já existe
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('E-mail já está em uso');
+    }
+
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Criar usuário
+    const user = await this.prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        points: true,
+        level: true,
+        createdAt: true,
+      },
+    });
+
+    // Gerar token JWT
+    const token = this.generateToken(user.id, user.email);
+
+    return {
+      message: 'Usuário cadastrado com sucesso',
+      user,
+      token,
+    };
   }
 
   async login(loginUserDto: LoginUserDto) {
-    // TODO: Implement login logic (e.g., validate user, check password)
-    await Promise.resolve();
-    return { message: 'User logged in successfully', user: loginUserDto };
+    const { email, password } = loginUserDto;
+
+    // Buscar usuário
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('E-mail ou senha incorretos');
+    }
+
+    // Verificar senha
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('E-mail ou senha incorretos');
+    }
+
+    // Gerar token JWT
+    const token = this.generateToken(user.id, user.email);
+
+    // Remover senha do retorno
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      message: 'Login realizado com sucesso',
+      user: userWithoutPassword,
+      token,
+    };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        points: true,
+        level: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado');
+    }
+
+    return user;
+  }
+
+  private generateToken(userId: string, email: string): string {
+    const payload = { sub: userId, email };
+    return this.jwtService.sign(payload);
   }
 }
