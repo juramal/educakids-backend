@@ -91,7 +91,7 @@ export class AuthService {
     };
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -111,7 +111,7 @@ export class AuthService {
     return user;
   }
 
-  private generateToken(userId: string, email: string): string {
+  private generateToken(userId: number, email: string): string {
     const payload = { sub: userId, email };
     return this.jwtService.sign(payload);
   }
