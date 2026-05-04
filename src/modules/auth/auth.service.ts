@@ -44,6 +44,8 @@ export class AuthService {
         email: true,
         points: true,
         level: true,
+        stars: true,
+        trophies: true,
         createdAt: true,
       },
     });
@@ -100,6 +102,8 @@ export class AuthService {
         email: true,
         points: true,
         level: true,
+        stars: true,
+        trophies: true,
         createdAt: true,
       },
     });
