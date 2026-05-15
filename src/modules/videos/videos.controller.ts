@@ -12,11 +12,13 @@ import {
 import { VideosService } from './videos.service';
 import { CreateVideoDto, UpdateProgressDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAdminGuard } from '../admin/guards/jwt-admin.guard';
 
 @Controller('videos')
 export class VideosController {
   constructor(private readonly videosService: VideosService) {}
 
+  @UseGuards(JwtAdminGuard)
   @Post()
   createVideo(@Body() createVideoDto: CreateVideoDto) {
     return this.videosService.createVideo(createVideoDto);
@@ -53,6 +55,7 @@ export class VideosController {
     return this.videosService.updateProgress(req.user.id, updateProgressDto);
   }
 
+  @UseGuards(JwtAdminGuard)
   @Delete(':id')
   deleteVideo(@Param('id', ParseIntPipe) id: number) {
     return this.videosService.deleteVideo(id);
