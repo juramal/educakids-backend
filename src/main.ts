@@ -2,13 +2,24 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { execSync } from 'child_process';
 
 async function bootstrap() {
+  try {
+    const migrateCmd = `"${process.execPath}" node_modules/prisma/bin.js migrate deploy`;
+    execSync(migrateCmd, { stdio: 'inherit', cwd: process.cwd() });
+  } catch {
+    console.error('Migration falhou — continuando inicialização');
+  }
+
   const app = await NestFactory.create(AppModule);
 
   // Habilitar CORS
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL]
+    : ['http://localhost:5173', 'http://localhost:4173'];
   app.enableCors({
-    origin: '*', // Em produção, especifique o domínio do frontend
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
